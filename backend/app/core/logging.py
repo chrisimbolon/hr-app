@@ -18,31 +18,28 @@ def setup_logging() -> None:
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,  # IMPORTANT
     ]
 
+    # 🚨 NO renderer here
+    processors = shared_processors
+
     if settings.is_production:
-        processors = shared_processors + [
-            structlog.processors.dict_tracebacks,
-            structlog.processors.JSONRenderer(),
-        ]
         formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processor=structlog.processors.JSONRenderer(),
         )
     else:
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer(colors=True),
-        ]
         formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processor=structlog.dev.ConsoleRenderer(colors=True),
         )
 
     structlog.configure(
-        processors=processors,
+        processors=processors,  # ✅ only shared_processors
         wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),  # ✅ correct
         cache_logger_on_first_use=True,
     )
 
