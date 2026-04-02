@@ -1,18 +1,20 @@
-from pydantic import BaseModel, EmailStr
+"""auth/application/schemas.py"""
+from app.shared.schemas.base import BaseSchema
+from pydantic import Field
 
 
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
-    tenant_id: str
+class LoginRequest(BaseSchema):
+    employee_code: str = Field(..., min_length=3, max_length=20)
+    pin: str | None = Field(None, min_length=4, max_length=8)
+    password: str | None = Field(None, min_length=6)
+    device_id: str | None = None
+    platform: str | None = None
+    fcm_token: str | None = None
 
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-    tenant_id: str
+class RefreshRequest(BaseSchema):
+    refresh_token: str
 
 
-class TokenResponse(BaseModel):
-    access_token: str
+class LogoutRequest(BaseSchema):
     refresh_token: str
