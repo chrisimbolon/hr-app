@@ -1,24 +1,24 @@
+"""
+auth/domain/entities.py — Pure Python auth domain objects
+"""
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
 
-@dataclass
-class User:
-    id: UUID
-    email: str
-    is_active: bool
-    token_version: int
-    created_at: datetime
+@dataclass(frozen=True)
+class AuthToken:
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900  # seconds
 
 
 @dataclass
-class Credential:
-    user_id: UUID
-    password_hash: str
-
-
-@dataclass
-class UserTenant:
-    user_id: UUID
-    tenant_id: UUID
+class LoginCommand:
+    employee_code: str
+    pin: str | None = None
+    password: str | None = None
+    device_id: str | None = None
+    platform: str | None = None
+    fcm_token: str | None = None
