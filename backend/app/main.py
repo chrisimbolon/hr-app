@@ -8,13 +8,14 @@ from contextlib import asynccontextmanager
 
 import structlog
 from app.core.config import settings
-from app.core.database import close_db, init_db
+from app.core.database import AsyncSessionLocal, close_db, init_db
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import (AuditMiddleware, RateLimitMiddleware,
                                  RequestContextMiddleware)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 log = structlog.get_logger()
 
@@ -83,6 +84,12 @@ def create_app() -> FastAPI:
             "version": settings.APP_VERSION,
             "env": settings.ENV,
         }
+    
+    @app.get("/health/db", tags=["System"])
+    async def db_health():
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+            return {"status": "ok"}
 
     return app
 
