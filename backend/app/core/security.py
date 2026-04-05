@@ -2,27 +2,39 @@
 core/security.py
 ────────────────
 JWT creation/verification and PIN/password hashing.
-No business logic here — pure cryptographic utilities.
+
+Uses bcrypt directly (not passlib) — passlib 1.7.4 is incompatible
+with bcrypt 4.x which removed the __about__ attribute passlib reads.
+Direct bcrypt usage: same security, fewer dependencies, no wrapper bugs.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+import bcrypt
 from app.core.config import settings
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 # ── Password / PIN hashing ──────────────────────────────────────
 
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    """Hash a plain-text password or PIN using bcrypt."""
+    password_bytes = plain.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    """
+    Verify a plain-text password against a bcrypt hash.
+    Returns False (never raises) on any mismatch or invalid hash.
+    Constant-time comparison — safe against timing attacks.
+    """
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 # ── JWT ─────────────────────────────────────────────────────────
@@ -61,10 +73,6 @@ def create_refresh_token(subject: UUID | str) -> str:
 
 
 def decode_token(token: str) -> dict[str, Any]:
-    """
-    Decode and verify JWT. Raises JWTError on failure.
-    Caller is responsible for checking token type.
-    """
     return jwt.decode(
         token,
         settings.SECRET_KEY,
