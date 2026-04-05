@@ -85,6 +85,14 @@ class EmployeeModel(Base, TimestampMixin):
     hashed_pin: Mapped[str | None] = mapped_column(String, nullable=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # ── Login security metadata ──────────────────────────────────
+    # These three columns live here (not in a separate auth table) because:
+    # auth already loads exactly one employee row on every login —
+    # three extra columns = zero extra JOINs, zero extra roundtrips.
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 class DeviceRegistrationModel(Base, TimestampMixin):
     __tablename__ = "device_registrations"
