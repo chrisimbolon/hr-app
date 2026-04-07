@@ -1,3 +1,5 @@
+@reference "tailwindcss";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,63 +9,39 @@
     --font-geist-sans: 'Geist', 'Inter', system-ui, sans-serif;
     --font-geist-mono: 'Geist Mono', 'JetBrains Mono', monospace;
 
-    /* Brand — warm Indonesian sunrise */
+    /* Brand */
     --brand: 34 96% 50%;
-    --brand-foreground: 0 0% 100%;
-
-    /* Sidebar */
-    --sidebar-bg: 220 13% 10%;
-    --sidebar-border: 220 13% 16%;
-    --sidebar-text: 220 9% 65%;
-    --sidebar-text-active: 0 0% 100%;
-    --sidebar-hover: 220 13% 16%;
-    --sidebar-active: 34 96% 50%;
   }
 
   * {
-    @apply border-border;
     box-sizing: border-box;
+    border-color: #e4e4e7; /* zinc-200 */
   }
 
   html {
     @apply antialiased;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   body {
     @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50;
     font-family: var(--font-geist-sans);
   }
-
-  /* PIN pad button press feel */
-  .pin-key {
-    @apply select-none transition-all duration-75 active:scale-95;
-  }
-
-  /* Skeleton shimmer */
-  .skeleton {
-    @apply relative overflow-hidden bg-zinc-100 dark:bg-zinc-800;
-  }
-  .skeleton::after {
-    content: '';
-    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent;
-    animation: shimmer 1.5s infinite;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-zinc-300 dark:bg-zinc-700 rounded-full; }
 }
 
 @layer components {
+  /* ✅ FIXED: NO @apply for custom colors */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg
-           bg-brand-500 text-white font-medium text-sm px-4 py-2.5
+           text-white font-medium text-sm px-4 py-2.5
            transition-all duration-150
-           hover:bg-brand-600 active:scale-[0.98]
-           disabled:opacity-50 disabled:pointer-events-none
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400;
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:pointer-events-none;
+
+    background-color: hsl(var(--brand));
+  }
+
+  .btn-primary:hover {
+    background-color: hsl(var(--brand) / 0.9);
   }
 
   .btn-secondary {
@@ -76,14 +54,6 @@
            disabled:opacity-50 disabled:pointer-events-none;
   }
 
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg
-           text-zinc-600 dark:text-zinc-400 font-medium text-sm px-3 py-2
-           transition-all duration-150
-           hover:bg-zinc-100 dark:hover:bg-zinc-800
-           active:scale-[0.98];
-  }
-
   .card {
     @apply bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800;
   }
@@ -92,12 +62,7 @@
     @apply w-full rounded-lg border border-zinc-200 dark:border-zinc-700
            bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100
            px-3 py-2.5 text-sm outline-none
-           focus:ring-2 focus:ring-brand-400 focus:border-transparent
-           placeholder:text-zinc-400 dark:placeholder:text-zinc-500
-           transition-all duration-150;
-  }
-
-  .status-badge {
-    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+           focus:ring-2 focus:ring-orange-400 focus:border-transparent
+           placeholder:text-zinc-400 dark:placeholder:text-zinc-500;
   }
 }
