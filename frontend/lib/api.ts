@@ -85,8 +85,14 @@ api.interceptors.response.use(
         refresh_token: refreshToken,
       })
 
-      const newAccessToken = data.data.access_token
-      useAuthStore.getState().setAccessToken(newAccessToken)
+      const newAccessToken  = data.data.access_token
+      const newRefreshToken = data.data.refresh_token  // rotation: MUST update stored token
+      useAuthStore.getState().setAuth({
+        ...useAuthStore.getState(),
+        employee: useAuthStore.getState().employee!,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      })
 
       processQueue(null, newAccessToken)
 
