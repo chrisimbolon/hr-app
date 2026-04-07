@@ -93,6 +93,8 @@ class EmployeeModel(Base, TimestampMixin):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
 
 class DeviceRegistrationModel(Base, TimestampMixin):
     __tablename__ = "device_registrations"
