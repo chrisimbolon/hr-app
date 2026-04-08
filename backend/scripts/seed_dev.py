@@ -10,13 +10,10 @@ Creates:
   - 1 tenant  (hadir-dev)
   - 1 company (PT HaDir Teknologi)
   - 1 office  (Jakarta HQ)
-  - 1 hr_admin employee with PIN 1234  → code: EMP-00001
-  - 1 regular employee with PIN 5678   → code: EMP-00002
-
-After running, test login at http://localhost:8000/docs:
-  POST /v1/auth/login
-  { "employee_code": "EMP-00001", "pin": "1234" }
+  - 1 hr_admin employee with PIN 123456  → code: EMP-00001
+  - 1 regular employee with PIN 567890   → code: EMP-00002
 """
+
 import asyncio
 import sys
 import uuid
@@ -29,6 +26,12 @@ from app.core.security import hash_password
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
+
+# ─────────────────────────────────────────────
+# Configurable seed data (clean separation)
+# ─────────────────────────────────────────────
+ADMIN_PIN = "123456"
+EMPLOYEE_PIN = "567890"
 
 
 async def seed():
@@ -64,7 +67,7 @@ async def seed():
                 VALUES (:id, :tid, 'PT HaDir Teknologi', 'Asia/Jakarta')
             """), {"id": company_id, "tid": tenant_id})
 
-            # ── Office location (Jakarta) ─────────────────────────
+            # ── Office location ───────────────────────────────────
             await db.execute(text("""
                 INSERT INTO office_locations
                     (id, company_id, name, latitude, longitude, radius_meters, is_primary)
@@ -73,8 +76,6 @@ async def seed():
             """), {"id": office_id, "cid": company_id})
 
             # ── Attendance policy ─────────────────────────────────
-            # ALL columns supplied explicitly — never rely on server_default
-            # because the deployed migration may or may not have set them.
             await db.execute(text("""
                 INSERT INTO attendance_policies (
                     id, company_id,
@@ -98,7 +99,6 @@ async def seed():
                     true
                 )
             """), {"id": uuid.uuid4(), "cid": company_id})
-            # NOTE: selfie + gps OFF for local dev testing convenience
 
             # ── HR Admin employee ─────────────────────────────────
             await db.execute(text("""
@@ -112,7 +112,7 @@ async def seed():
                 "id": admin_id,
                 "cid": company_id,
                 "jd": date(2024, 1, 1),
-                "pin": hash_password("1234"),
+                "pin": hash_password(ADMIN_PIN),
             })
 
             # ── Regular employee ──────────────────────────────────
@@ -128,10 +128,11 @@ async def seed():
                 "id": employee_id,
                 "cid": company_id,
                 "jd": date(2024, 3, 1),
-                "pin": hash_password("5678"),
+                "pin": hash_password(EMPLOYEE_PIN),
                 "mgr": admin_id,
             })
 
+        # ── Output summary ───────────────────────────────────────
         print()
         print("✅ Seed complete!")
         print()
@@ -141,14 +142,14 @@ async def seed():
         print("  ┌─────────────┬──────────────┬──────────┬───────────┐")
         print("  │ Code        │ Name         │ Role     │ PIN       │")
         print("  ├─────────────┼──────────────┼──────────┼───────────┤")
-        print("  │ EMP-00001   │ Admin HaDir  │ hr_admin │ 1234      │")
-        print("  │ EMP-00002   │ Budi Santoso │ employee │ 5678      │")
+        print(f"  │ EMP-00001   │ Admin HaDir  │ hr_admin │ {ADMIN_PIN} │")
+        print(f"  │ EMP-00002   │ Budi Santoso │ employee │ {EMPLOYEE_PIN} │")
         print("  └─────────────┴──────────────┴──────────┴───────────┘")
         print()
         print("  Test login:")
         print('  curl -X POST http://localhost:8000/v1/auth/login \\')
         print('    -H "Content-Type: application/json" \\')
-        print('    -d \'{"employee_code": "EMP-00001", "pin": "1234"}\'')
+        print(f'    -d \'{{"employee_code": "EMP-00001", "pin": "{ADMIN_PIN}"}}\'')
         print()
 
     await engine.dispose()
