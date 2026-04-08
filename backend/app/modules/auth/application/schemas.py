@@ -2,6 +2,15 @@
 auth/application/schemas.py
 ─────────────────────────────
 Request and response Pydantic models for the auth module.
+
+PIN policy (enforced here at the API boundary):
+  - Exactly 6 digits — no more, no less
+  - Must be numeric only
+  - Must not be a weak pattern (sequential or all-same)
+
+This is the single source of truth for PIN format.
+The Flutter app and web frontend should also enforce 6 digits
+in the UI, but the backend validates regardless.
 """
 from uuid import UUID
 
@@ -12,7 +21,12 @@ from pydantic import Field, field_validator
 
 class LoginRequest(BaseSchema):
     employee_code: str = Field(..., min_length=3, max_length=20)
-    pin: str | None = Field(None, min_length=4, max_length=8)
+    pin: str | None = Field(
+        None,
+        min_length=6,
+        max_length=6,
+        description="Exactly 6 numeric digits",
+    )
     password: str | None = Field(None, min_length=6)
     device_id: str | None = Field(None, max_length=200)
     platform: str | None = Field(None)
@@ -22,6 +36,13 @@ class LoginRequest(BaseSchema):
     @classmethod
     def upper_code(cls, v: str) -> str:
         return v.upper().strip()
+
+    @field_validator("pin")
+    @classmethod
+    def pin_must_be_numeric(cls, v: str | None) -> str | None:
+        if v is not None and not v.isdigit():
+            raise ValueError("PIN harus berupa 6 angka")
+        return v
 
 
 class RefreshRequest(BaseSchema):
@@ -33,16 +54,30 @@ class LogoutRequest(BaseSchema):
 
 
 class ChangePinRequest(BaseSchema):
-    current_pin: str = Field(..., min_length=4, max_length=8)
-    new_pin: str = Field(..., min_length=4, max_length=8)
+    current_pin: str = Field(..., min_length=6, max_length=6)
+    new_pin: str = Field(..., min_length=6, max_length=6)
+
+    @field_validator("current_pin", "new_pin")
+    @classmethod
+    def pin_must_be_numeric(cls, v: str) -> str:
+        if not v.isdigit():
+            raise ValueError("PIN harus berupa 6 angka")
+        return v
 
     @field_validator("new_pin")
     @classmethod
-    def pin_not_sequential(cls, v: str) -> str:
-        weak = ["1234", "0000", "1111", "2222", "3333",
-                "4444", "5555", "6666", "7777", "8888", "9999"]
-        if v in weak:
-            raise ValueError("PIN terlalu lemah. Hindari angka berurutan atau berulang.")
+    def pin_not_weak(cls, v: str) -> str:
+        # All-same digits: 000000, 111111, ..., 999999
+        if len(set(v)) == 1:
+            raise ValueError("PIN terlalu lemah. Jangan gunakan angka yang sama semua.")
+        # Sequential ascending: 123456, 234567, ..., 678901 (wrapping)
+        digits = [int(c) for c in v]
+        diffs = [digits[i+1] - digits[i] for i in range(len(digits) - 1)]
+        if all(d == 1 for d in diffs):
+            raise ValueError("PIN terlalu lemah. Jangan gunakan angka berurutan.")
+        # Sequential descending: 654321, 987654
+        if all(d == -1 for d in diffs):
+            raise ValueError("PIN terlalu lemah. Jangan gunakan angka berurutan turun.")
         return v
 
 
@@ -68,6 +103,6 @@ class LoginResponse(BaseSchema):
 
 class TokenRefreshResponse(BaseSchema):
     access_token: str
-    refresh_token: str          # rotation: client MUST replace the stored refresh token
+    refresh_token: str          # rotation: client MUST replace stored token
     token_type: str = "bearer"
     expires_in: int = 900
