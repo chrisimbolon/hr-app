@@ -1,43 +1,49 @@
 'use client'
 
+import { api } from '@/lib/api'
+import { cn, getInitials, getRoleLabel } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth'
+import {
+  Bell,
+  Calendar,
+  Clock,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import {
-  LayoutDashboard, Clock, Users, Calendar, CreditCard,
-  LogOut, ChevronRight, Bell, Settings,
-} from 'lucide-react'
-import { cn, getInitials, getRoleLabel } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth'
-import { api } from '@/lib/api'
 
 const NAV_ITEMS = [
   {
     label: 'Dashboard',
-    href: '/dashboard',
+    href: '/',
     icon: LayoutDashboard,
     exact: true,
   },
   {
     label: 'Kehadiran',
-    href: '/dashboard/attendance',
+    href: '/attendance',
     icon: Clock,
   },
   {
     label: 'Karyawan',
-    href: '/dashboard/employees',
+    href: '/employees',
     icon: Users,
     roles: ['hr_admin', 'company_admin', 'manager'],
   },
   {
     label: 'Izin & Cuti',
-    href: '/dashboard/leave',
+    href: '/leave',
     icon: Calendar,
   },
   {
     label: 'Penggajian',
-    href: '/dashboard/payroll',
+    href: '/payroll',
     icon: CreditCard,
     roles: ['hr_admin', 'company_admin'],
   },
@@ -62,7 +68,7 @@ export default function Sidebar() {
       logout()
       // Clear the auth cookie
       document.cookie = 'hadir-auth-token=; path=/; max-age=0'
-      router.push('/auth/login')
+      router.push('/login')
       toast.success('Sampai jumpa! 👋')
     }
   }
@@ -93,7 +99,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive = item.exact
-            ? pathname === item.href
+            ? item.href === '/' ? pathname === '/' : pathname === item.href
             : pathname.startsWith(item.href)
 
           return (
