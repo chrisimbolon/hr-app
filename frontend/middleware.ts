@@ -2,37 +2,38 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
 /**
- * Middleware — route protection via cookie.
+ * Middleware — route protection.
  *
- * Auth state lives in Zustand → localStorage (client-side only).
- * We bridge this to SSR by setting a presence cookie on login
- * (in LoginForm.tsx) and clearing it on logout (in Sidebar.tsx).
+ * Your route group structure:
+ *   app/(auth)/login/page.tsx     → URL: /login
+ *   app/(dashboard)/page.tsx      → URL: /          (dashboard home)
  *
- * The cookie value is NOT a secret — it's just a boolean flag.
- * The real access token lives in localStorage and is sent as
- * Authorization: Bearer on every API call by the axios interceptor.
+ * Route groups (parentheses) are invisible to the URL router.
+ * So the dashboard lives at / and login lives at /login.
+ *
+ * Auth state is bridged from localStorage → cookie:
+ *   LoginForm sets  'hadir-auth-token=1' on successful login
+ *   Sidebar clears  'hadir-auth-token='  on logout
  */
-
-const PUBLIC_PATHS = ['/auth/login', '/auth/']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const authCookie = request.cookies.get('hadir-auth-token')
   const isAuthenticated = !!authCookie?.value
 
-  const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
-  const isDashboardPath = pathname.startsWith('/dashboard')
+  const isLoginPage = pathname === '/login' || pathname.startsWith('/login/')
+  const isRootOrApp  = pathname === '/' || pathname.startsWith('/attendance') ||
+                       pathname.startsWith('/employees') || pathname.startsWith('/leave') ||
+                       pathname.startsWith('/payroll')
 
-  // Unauthenticated → redirect to login
-  if (isDashboardPath && !isAuthenticated) {
-    const url = new URL('/auth/login', request.url)
-    return NextResponse.redirect(url)
+  // Unauthenticated user trying to access the app → send to login
+  if (isRootOrApp && !isAuthenticated) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Already authenticated → redirect away from login to dashboard
-  if (isPublicPath && isAuthenticated) {
-    const url = new URL('/dashboard', request.url)
-    return NextResponse.redirect(url)
+  // Already authenticated user on login page → send to app home
+  if (isLoginPage && isAuthenticated) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   return NextResponse.next()
@@ -40,7 +41,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files, api routes, Next internals
     '/((?!_next/static|_next/image|favicon.ico|api/).*)',
   ],
 }
