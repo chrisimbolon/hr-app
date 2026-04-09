@@ -105,7 +105,7 @@ api.interceptors.response.use(
       const { useAuthStore } = require('@/stores/auth')
       useAuthStore.getState().logout()
       if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login'
+        window.location.href = '/login'
       }
       return Promise.reject(refreshError)
     } finally {
