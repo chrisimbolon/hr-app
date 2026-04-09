@@ -2,10 +2,10 @@
 
 import { api } from '@/lib/api'
 import {
-    cn, formatTime,
-    getAttendanceStatusColor,
-    getAttendanceStatusLabel,
-    minutesToHoursDisplay,
+  cn, formatTime,
+  getAttendanceStatusColor,
+  getAttendanceStatusLabel,
+  minutesToHoursDisplay,
 } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth'
 import type { AttendanceSummary, TodayStatus } from '@/types'
@@ -237,10 +237,10 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-zinc-300 mb-4">Aksi Cepat</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Ajukan Izin', href: '/dashboard/leave', color: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20' },
-                { label: 'Rekap Absen', href: '/dashboard/attendance', color: 'bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 border-brand-500/20' },
-                { label: 'Profil Saya', href: '/dashboard/employees', color: 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/20' },
-                { label: 'Slip Gaji', href: '/dashboard/payroll', color: 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20' },
+                { label: 'Ajukan Izin', href: '/leave', color: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20' },
+                { label: 'Rekap Absen', href: '/attendance', color: 'bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 border-brand-500/20' },
+                { label: 'Profil Saya', href: '/employees', color: 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/20' },
+                { label: 'Slip Gaji', href: '/payroll', color: 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20' },
               ].map((action) => (
                 <a
                   key={action.label}
