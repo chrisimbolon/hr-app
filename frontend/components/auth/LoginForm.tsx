@@ -143,7 +143,7 @@ export default function LoginForm() {
 
     try {
       const { data } = await api.post<ApiResponse<LoginResponse>>(
-        '/auth/login',
+        '/login',
         {
           employee_code: employeeCode.toUpperCase().trim(),
           pin,
@@ -163,7 +163,7 @@ export default function LoginForm() {
       document.cookie = `hadir-auth-token=1; path=/; max-age=${maxAge}; SameSite=Strict`
 
       toast.success(`Selamat datang, ${data.data.employee.full_name.split(' ')[0]}! 👋`)
-      router.push('/dashboard')
+      router.push('/')
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })
