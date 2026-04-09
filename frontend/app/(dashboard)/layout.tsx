@@ -22,7 +22,7 @@ export default function DashboardLayout({
   useEffect(() => {
     // Only redirect after hydration — before that we don't know auth state
     if (hydrated && !isAuthenticated) {
-      router.replace('/auth/login')
+      router.replace('/login')
     }
   }, [hydrated, isAuthenticated, router])
 
