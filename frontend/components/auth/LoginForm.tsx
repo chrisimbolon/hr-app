@@ -4,21 +4,10 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth'
 import type { ApiResponse, LoginResponse } from '@/types'
-import { Trash2 } from 'lucide-react'
+import { Delete } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-
-// ── Helpers ───────────────────────────────────────────────────────
-function formatEmployeeCode(value: string) {
-  const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-
-  if (cleaned.startsWith('EMP') && cleaned.length > 3) {
-    return `EMP-${cleaned.slice(3)}`
-  }
-
-  return cleaned
-}
 
 // ── PIN display ───────────────────────────────────────────────────
 function PinDots({ length, filled }: { length: number; filled: number }) {
@@ -105,7 +94,6 @@ export default function LoginForm() {
   // Keyboard support for PIN
   useEffect(() => {
     if (step !== 'pin') return
-
     const handler = (e: KeyboardEvent) => {
       if (e.key >= '0' && e.key <= '9') {
         setPin((p) => (p.length < PIN_LENGTH ? p + e.key : p))
@@ -113,17 +101,16 @@ export default function LoginForm() {
         setPin((p) => p.slice(0, -1))
       }
     }
-
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [step])
 
-  // Auto-submit PIN
+  // Auto-submit when PIN is complete
   useEffect(() => {
     if (pin.length === PIN_LENGTH) {
       handleLogin()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin])
 
   const handlePinKey = (digit: string) => {
@@ -138,32 +125,19 @@ export default function LoginForm() {
     setError('')
   }
 
-  // ── Step 1 submit ───────────────────────────────────────────────
   const handleCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (isLoading) return
-
     if (!employeeCode.trim()) {
       setError('Masukkan kode karyawan')
       triggerShake()
       return
     }
-
-    setIsLoading(true)
     setError('')
-
-    // Small UX delay (feels smoother)
-    setTimeout(() => {
-      setStep('pin')
-      setIsLoading(false)
-    }, 300)
+    setStep('pin')
   }
 
-  // ── Login ───────────────────────────────────────────────────────
   const handleLogin = async () => {
     if (isLoading) return
-
     setIsLoading(true)
     setError('')
 
@@ -171,7 +145,7 @@ export default function LoginForm() {
       const { data } = await api.post<ApiResponse<LoginResponse>>(
         '/auth/login',
         {
-          employee_code: employeeCode.replace('-', '').toUpperCase().trim(),
+          employee_code: employeeCode.toUpperCase().trim(),
           pin,
         },
       )
@@ -182,24 +156,24 @@ export default function LoginForm() {
         refreshToken: data.data.refresh_token,
       })
 
-      toast.success(
-        `Selamat datang, ${
-          data.data.employee.full_name.split(' ')[0]
-        }! 👋`,
-      )
+      // Set cookie so middleware can protect dashboard routes server-side.
+      // The cookie value is just a presence flag — the real token lives
+      // in localStorage via Zustand. Max-age = 7 days (refresh token TTL).
+      const maxAge = 7 * 24 * 60 * 60
+      document.cookie = `hadir-auth-token=1; path=/; max-age=${maxAge}; SameSite=Strict`
 
+      toast.success(`Selamat datang, ${data.data.employee.full_name.split(' ')[0]}! 👋`)
       router.push('/dashboard')
     } catch (err: unknown) {
       const message =
-        (err as {
-          response?: { data?: { error?: { message?: string } } }
-        })?.response?.data?.error?.message ??
-        'Login gagal. Coba lagi.'
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Login gagal. Coba lagi.'
 
       setError(message)
       setPin('')
       triggerShake()
 
+      // If account locked, go back to code step
       if (message.toLowerCase().includes('terkunci')) {
         setTimeout(() => setStep('code'), 2000)
       }
@@ -210,6 +184,7 @@ export default function LoginForm() {
 
   return (
     <div className="flex flex-col items-center gap-8">
+
       {/* Logo */}
       <div className="flex flex-col items-center gap-2">
         <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
@@ -221,9 +196,7 @@ export default function LoginForm() {
         </div>
         <div className="text-center">
           <h1 className="text-xl font-semibold text-white tracking-tight">HaDir</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            HR & Attendance Management
-          </p>
+          <p className="text-xs text-zinc-500 mt-0.5">HR & Attendance Management</p>
         </div>
       </div>
 
@@ -233,90 +206,117 @@ export default function LoginForm() {
           'w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6',
           shake && 'animate-[shake_0.5s_ease-in-out]',
         )}
+        style={{
+          animation: shake ? 'shake 0.5s ease-in-out' : undefined,
+        }}
       >
         {step === 'code' ? (
+          /* ── Step 1: Employee code ─────────────────────────── */
           <form onSubmit={handleCodeSubmit} className="flex flex-col gap-5">
             <div>
               <p className="text-sm font-medium text-zinc-400 mb-4 text-center">
                 Masukkan kode karyawan
               </p>
-
               <input
                 type="text"
                 value={employeeCode}
                 onChange={(e) => {
-                  setEmployeeCode(formatEmployeeCode(e.target.value))
+                  setEmployeeCode(e.target.value.toUpperCase())
                   setError('')
                 }}
                 placeholder="EMP-00001"
                 autoFocus
+                autoComplete="off"
+                autoCapitalize="characters"
                 className={cn(
                   'w-full bg-zinc-800 border rounded-xl px-4 py-3.5',
                   'text-white text-center text-lg font-mono tracking-widest',
-                  'outline-none transition-all',
+                  'placeholder:text-zinc-600 placeholder:tracking-normal placeholder:font-sans',
+                  'outline-none transition-all duration-150',
                   error
-                    ? 'border-red-500/60'
-                    : 'border-zinc-700 focus:border-brand-500/60',
+                    ? 'border-red-500/60 focus:ring-2 focus:ring-red-500/30'
+                    : 'border-zinc-700 focus:border-brand-500/60 focus:ring-2 focus:ring-brand-500/20',
                 )}
               />
-
               {error && (
-                <p className="text-red-400 text-xs mt-2 text-center">
+                <p className="text-red-400 text-xs mt-2 text-center animate-fade-in">
+                  {error}
+                </p>
+              )}
+            </div>
+            <button type="submit" className="btn-primary w-full py-3 text-base">
+              Lanjut
+            </button>
+          </form>
+        ) : (
+          /* ── Step 2: PIN pad ───────────────────────────────── */
+          <div className="flex flex-col items-center gap-6">
+            <div>
+              <p className="text-sm text-zinc-400 text-center mb-1">
+                Halo,{' '}
+                <span className="text-white font-medium">
+                  {employeeCode.toUpperCase()}
+                </span>
+              </p>
+              <p className="text-xs text-zinc-600 text-center">
+                Masukkan PIN 6 digit kamu
+              </p>
+            </div>
+
+            {/* PIN dots */}
+            <div className="py-2">
+              <PinDots length={PIN_LENGTH} filled={pin.length} />
+              {error && (
+                <p className="text-red-400 text-xs mt-3 text-center animate-fade-in">
                   {error}
                 </p>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={!employeeCode.trim() || isLoading}
-              className={cn(
-                'btn-primary w-full py-3 text-base',
-                (!employeeCode.trim() || isLoading) &&
-                  'opacity-50 cursor-not-allowed',
-              )}
-            >
-              {isLoading ? 'Memproses...' : 'Lanjut'}
-            </button>
-          </form>
-        ) : (
-          <div className="flex flex-col items-center gap-6">
-            <p className="text-sm text-zinc-400">
-              Halo{' '}
-              <span className="text-white font-medium">
-                {employeeCode}
-              </span>
-            </p>
-
-            <PinDots length={PIN_LENGTH} filled={pin.length} />
-
-            {error && (
-              <p className="text-red-400 text-xs text-center">{error}</p>
-            )}
-
+            {/* Number pad */}
             <div className="grid grid-cols-3 gap-3">
-              {['1','2','3','4','5','6','7','8','9'].map((d) => (
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                 <PinKey key={d} label={d} onClick={() => handlePinKey(d)} />
               ))}
 
-              <PinKey onClick={() => setStep('code')}>
-                ←
+              {/* Back button */}
+              <PinKey
+                onClick={() => {
+                  setStep('code')
+                  setPin('')
+                  setError('')
+                }}
+                className="text-zinc-500 hover:text-zinc-300 text-xs"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-zinc-500">
+                  <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+                </svg>
               </PinKey>
 
+              {/* Zero */}
               <PinKey label="0" onClick={() => handlePinKey('0')} />
 
-              <PinKey onClick={handleDelete}>
-                <Trash2 className="w-5 h-5 text-zinc-400" />
+              {/* Delete */}
+              <PinKey
+                onClick={handleDelete}
+                className={pin.length === 0 ? 'opacity-30 pointer-events-none' : ''}
+              >
+                <Delete className="w-5 h-5 text-zinc-400" />
               </PinKey>
             </div>
 
+            {/* Loading state */}
             {isLoading && (
-              <p className="text-sm text-brand-400">Memverifikasi...</p>
+              <div className="flex items-center gap-2 text-brand-400 text-sm animate-fade-in">
+                <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                <span>Memverifikasi...</span>
+              </div>
             )}
           </div>
         )}
       </div>
 
+      {/* Footer */}
       <p className="text-zinc-600 text-xs text-center">
         Lupa PIN? Hubungi HR admin perusahaan kamu.
       </p>
