@@ -10,8 +10,15 @@ Creates:
   - 1 tenant  (hadir-dev)
   - 1 company (PT HaDir Teknologi)
   - 1 office  (Jakarta HQ)
-  - 1 hr_admin employee with PIN 123456  → code: EMP-00001
-  - 1 regular employee with PIN 567890   → code: EMP-00002
+  - 1 hr_admin employee  → code: ADM001  PIN: 123456
+  - 1 regular employee   → code: EMP001  PIN: 567890
+
+Why simpler codes (ADM001 / EMP001 instead of EMP-00001):
+  The old code format 'EMP-00001' caused repeated typos in testing
+  because hyphens and leading zeros are easy to miss. Simple
+  alphanumeric codes are faster to type and harder to get wrong.
+  Production codes can use whatever format the company prefers —
+  this is just dev seed data.
 """
 
 import asyncio
@@ -27,11 +34,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 
-# ─────────────────────────────────────────────
-# Configurable seed data (clean separation)
-# ─────────────────────────────────────────────
-ADMIN_PIN = "123456"
-EMPLOYEE_PIN = "567890"
+# ── Seed config ───────────────────────────────────────────────────
+ADMIN_CODE = "ADM001"
+ADMIN_PIN  = "123456"
+
+EMPLOYEE_CODE = "EMP001"
+EMPLOYEE_PIN  = "567890"
 
 
 async def seed():
@@ -41,7 +49,7 @@ async def seed():
     async with factory() as db:
         async with db.begin():
 
-            # ── Check if already seeded ───────────────────────────
+            # ── Skip if already seeded ────────────────────────────
             existing = await db.scalar(
                 text("SELECT COUNT(*) FROM tenants WHERE slug = 'hadir-dev'")
             )
@@ -49,10 +57,10 @@ async def seed():
                 print("✅ Already seeded — skipping")
                 return
 
-            tenant_id = uuid.uuid4()
-            company_id = uuid.uuid4()
-            office_id = uuid.uuid4()
-            admin_id = uuid.uuid4()
+            tenant_id   = uuid.uuid4()
+            company_id  = uuid.uuid4()
+            office_id   = uuid.uuid4()
+            admin_id    = uuid.uuid4()
             employee_id = uuid.uuid4()
 
             # ── Tenant ────────────────────────────────────────────
@@ -67,7 +75,7 @@ async def seed():
                 VALUES (:id, :tid, 'PT HaDir Teknologi', 'Asia/Jakarta')
             """), {"id": company_id, "tid": tenant_id})
 
-            # ── Office location ───────────────────────────────────
+            # ── Office location (Jakarta) ─────────────────────────
             await db.execute(text("""
                 INSERT INTO office_locations
                     (id, company_id, name, latitude, longitude, radius_meters, is_primary)
@@ -76,6 +84,7 @@ async def seed():
             """), {"id": office_id, "cid": company_id})
 
             # ── Attendance policy ─────────────────────────────────
+            # All columns explicit — never rely on server_default
             await db.execute(text("""
                 INSERT INTO attendance_policies (
                     id, company_id,
@@ -88,31 +97,24 @@ async def seed():
                     require_gps,
                     allow_wfh
                 ) VALUES (
-                    :id, :cid,
-                    15,
-                    15,
-                    30,
-                    600,
-                    60,
-                    false,
-                    false,
-                    true
+                    :id, :cid, 15, 15, 30, 600, 60, false, false, true
                 )
             """), {"id": uuid.uuid4(), "cid": company_id})
 
-            # ── HR Admin employee ─────────────────────────────────
+            # ── HR Admin ──────────────────────────────────────────
             await db.execute(text("""
                 INSERT INTO employees
                     (id, company_id, employee_code, full_name, email,
                      employment_type, join_date, role, status, hashed_pin)
                 VALUES
-                    (:id, :cid, 'EMP-00001', 'Admin HaDir', 'admin@hadir.dev',
+                    (:id, :cid, :code, 'Admin HaDir', 'admin@hadir.dev',
                      'permanent', :jd, 'hr_admin', 'active', :pin)
             """), {
-                "id": admin_id,
-                "cid": company_id,
-                "jd": date(2024, 1, 1),
-                "pin": hash_password(ADMIN_PIN),
+                "id":   admin_id,
+                "cid":  company_id,
+                "code": ADMIN_CODE,
+                "jd":   date(2024, 1, 1),
+                "pin":  hash_password(ADMIN_PIN),
             })
 
             # ── Regular employee ──────────────────────────────────
@@ -122,34 +124,35 @@ async def seed():
                      employment_type, join_date, role, status,
                      hashed_pin, direct_manager_id)
                 VALUES
-                    (:id, :cid, 'EMP-00002', 'Budi Santoso', 'budi@hadir.dev',
+                    (:id, :cid, :code, 'Budi Santoso', 'budi@hadir.dev',
                      'permanent', :jd, 'employee', 'active', :pin, :mgr)
             """), {
-                "id": employee_id,
-                "cid": company_id,
-                "jd": date(2024, 3, 1),
-                "pin": hash_password(EMPLOYEE_PIN),
-                "mgr": admin_id,
+                "id":   employee_id,
+                "cid":  company_id,
+                "code": EMPLOYEE_CODE,
+                "jd":   date(2024, 3, 1),
+                "pin":  hash_password(EMPLOYEE_PIN),
+                "mgr":  admin_id,
             })
 
-        # ── Output summary ───────────────────────────────────────
+        # ── Summary ───────────────────────────────────────────────
         print()
         print("✅ Seed complete!")
         print()
         print("  Tenant:  hadir-dev (pro/active)")
         print("  Company: PT HaDir Teknologi")
         print()
-        print("  ┌─────────────┬──────────────┬──────────┬───────────┐")
-        print("  │ Code        │ Name         │ Role     │ PIN       │")
-        print("  ├─────────────┼──────────────┼──────────┼───────────┤")
-        print(f"  │ EMP-00001   │ Admin HaDir  │ hr_admin │ {ADMIN_PIN} │")
-        print(f"  │ EMP-00002   │ Budi Santoso │ employee │ {EMPLOYEE_PIN} │")
-        print("  └─────────────┴──────────────┴──────────┴───────────┘")
+        print("  ┌──────────┬──────────────┬──────────┬────────┐")
+        print("  │ Code     │ Name         │ Role     │ PIN    │")
+        print("  ├──────────┼──────────────┼──────────┼────────┤")
+        print(f"  │ {ADMIN_CODE:<8} │ Admin HaDir  │ hr_admin │ {ADMIN_PIN} │")
+        print(f"  │ {EMPLOYEE_CODE:<8} │ Budi Santoso │ employee │ {EMPLOYEE_PIN} │")
+        print("  └──────────┴──────────────┴──────────┴────────┘")
         print()
         print("  Test login:")
         print('  curl -X POST http://localhost:8000/v1/auth/login \\')
         print('    -H "Content-Type: application/json" \\')
-        print(f'    -d \'{{"employee_code": "EMP-00001", "pin": "{ADMIN_PIN}"}}\'')
+        print(f'    -d \'{{"employee_code": "{ADMIN_CODE}", "pin": "{ADMIN_PIN}"}}\'')
         print()
 
     await engine.dispose()
