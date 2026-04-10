@@ -105,8 +105,11 @@ api.interceptors.response.use(
       const { useAuthStore } = require('@/stores/auth')
       useAuthStore.getState().logout()
       if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+       document.cookie = 'hadir-auth-token=; path=/; max-age=0'
       }
+      // if (typeof window !== 'undefined') {
+      //   window.location.href = '/login'
+      // }
       return Promise.reject(refreshError)
     } finally {
       isRefreshing = false
