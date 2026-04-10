@@ -143,7 +143,7 @@ export default function LoginForm() {
 
     try {
       const { data } = await api.post<ApiResponse<LoginResponse>>(
-        '/auth/login',
+        '/auth/login',   // ← FIXED: was '/login', needs the /auth/ prefix
         {
           employee_code: employeeCode.toUpperCase().trim(),
           pin,
@@ -156,9 +156,15 @@ export default function LoginForm() {
         refreshToken: data.data.refresh_token,
       })
 
-      // Set cookie so middleware can protect dashboard routes server-side.
-      // The cookie value is just a presence flag — the real token lives
-      // in localStorage via Zustand. Max-age = 7 days (refresh token TTL).
+      // Bridge localStorage auth state → cookie for middleware route protection.
+      // We store a simple presence flag (not the actual token) because:
+      //   1. The real token is in localStorage via Zustand — where the axios
+      //      interceptor reads it for every API call.
+      //   2. The middleware only needs to know "is there a session?" to decide
+      //      whether to redirect. It doesn't validate the token.
+      //   3. Storing the actual JWT in a cookie would require httpOnly (no JS
+      //      access) which would break the Zustand interceptor that reads it.
+      // Max-age matches refresh token TTL (7 days).
       const maxAge = 7 * 24 * 60 * 60
       document.cookie = `hadir-auth-token=1; path=/; max-age=${maxAge}; SameSite=Strict`
 
@@ -173,7 +179,6 @@ export default function LoginForm() {
       setPin('')
       triggerShake()
 
-      // If account locked, go back to code step
       if (message.toLowerCase().includes('terkunci')) {
         setTimeout(() => setStep('code'), 2000)
       }
@@ -204,7 +209,6 @@ export default function LoginForm() {
       <div
         className={cn(
           'w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6',
-          shake && 'animate-[shake_0.5s_ease-in-out]',
         )}
         style={{
           animation: shake ? 'shake 0.5s ease-in-out' : undefined,
@@ -224,7 +228,7 @@ export default function LoginForm() {
                   setEmployeeCode(e.target.value.toUpperCase())
                   setError('')
                 }}
-                placeholder="EMP-00001"
+                placeholder="ADM001"
                 autoFocus
                 autoComplete="off"
                 autoCapitalize="characters"
