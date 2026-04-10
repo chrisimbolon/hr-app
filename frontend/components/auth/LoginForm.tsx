@@ -143,7 +143,7 @@ export default function LoginForm() {
 
     try {
       const { data } = await api.post<ApiResponse<LoginResponse>>(
-        '/login',
+        '/auth/login',
         {
           employee_code: employeeCode.toUpperCase().trim(),
           pin,
