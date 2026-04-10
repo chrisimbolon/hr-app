@@ -2,36 +2,41 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
 /**
- * Middleware — route protection.
+ * middleware.ts
+ * ─────────────
+ * Route protection for the HaDir frontend.
  *
- * Your route group structure:
- *   app/(auth)/login/page.tsx     → URL: /login
- *   app/(dashboard)/page.tsx      → URL: /          (dashboard home)
+ * URL structure (route groups are invisible to URLs):
+ *   app/(auth)/login/page.tsx       → /login
+ *   app/(dashboard)/page.tsx        → /           (dashboard home)
+ *   app/(dashboard)/attendance/...  → /attendance
+ *   app/(dashboard)/employees/...   → /employees
+ *   app/(dashboard)/leave/...       → /leave
+ *   app/(dashboard)/payroll/...     → /payroll
  *
- * Route groups (parentheses) are invisible to the URL router.
- * So the dashboard lives at / and login lives at /login.
- *
- * Auth state is bridged from localStorage → cookie:
- *   LoginForm sets  'hadir-auth-token=1' on successful login
- *   Sidebar clears  'hadir-auth-token='  on logout
+ * Auth bridge: LoginForm sets 'hadir-auth-token=1' cookie on login.
+ *              Sidebar clears it on logout.
+ *              Middleware reads it for server-side route protection.
  */
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const authCookie = request.cookies.get('hadir-auth-token')
-  const isAuthenticated = !!authCookie?.value
+  const isAuthenticated = !!request.cookies.get('hadir-auth-token')?.value
 
-  const isLoginPage = pathname === '/login' || pathname.startsWith('/login/')
-  const isRootOrApp  = pathname === '/' || pathname.startsWith('/attendance') ||
-                       pathname.startsWith('/employees') || pathname.startsWith('/leave') ||
-                       pathname.startsWith('/payroll')
+  const isLoginPage = pathname === '/login'
 
-  // Unauthenticated user trying to access the app → send to login
-  if (isRootOrApp && !isAuthenticated) {
+  const isProtectedPage =
+    pathname === '/' ||
+    pathname.startsWith('/attendance') ||
+    pathname.startsWith('/employees') ||
+    pathname.startsWith('/leave') ||
+    pathname.startsWith('/payroll')
+
+  // Not logged in + trying to access protected page → go to login
+  if (isProtectedPage && !isAuthenticated) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Already authenticated user on login page → send to app home
+  // Already logged in + on login page → go to dashboard home
   if (isLoginPage && isAuthenticated) {
     return NextResponse.redirect(new URL('/', request.url))
   }
@@ -40,7 +45,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)'],
 }
