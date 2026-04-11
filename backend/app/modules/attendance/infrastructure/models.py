@@ -112,13 +112,13 @@ class AttendanceLogModel(Base):
     employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False)
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
     timestamp_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    type: Mapped[str] = mapped_column(Enum(CheckType), nullable=False)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # stored as 'check_in'/'check_out'
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     accuracy_meters: Mapped[float | None] = mapped_column(Float, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    source: Mapped[str] = mapped_column(Enum(AttendanceSource), default=AttendanceSource.MOBILE)
+    source: Mapped[str] = mapped_column(String(20), default='mobile')  # stored as 'mobile'/'web'/'admin_override'
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -155,7 +155,7 @@ class AttendanceSummaryModel(Base, TimestampMixin):
     is_leave: Mapped[bool] = mapped_column(Boolean, default=False)
 
     status: Mapped[str] = mapped_column(
-        Enum(AttendanceStatus), default=AttendanceStatus.INCOMPLETE, index=True
+        String(20), default='incomplete', index=True  # stored as 'present'/'late'/'alpha' etc
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
