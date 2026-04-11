@@ -2,28 +2,25 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
 /**
- * proxy.ts  (Next.js 16 renamed middleware.ts → proxy.ts)
- * ──────────
- * Route protection for HaDir.
+ * proxy.ts — Next.js 16 renamed the file from middleware.ts to proxy.ts
+ *
+ * IMPORTANT: The filename is proxy.ts but the exported function
+ * must still be named "middleware" — Next.js always looks for
+ * that export name regardless of what the file is called.
  *
  * URL structure (route groups are invisible to URLs):
  *   app/(auth)/login/page.tsx        → /login
- *   app/(dashboard)/page.tsx         → /            ← dashboard home
+ *   app/(dashboard)/page.tsx         → /
  *   app/(dashboard)/attendance/...   → /attendance
  *   app/(dashboard)/employees/...    → /employees
  *   app/(dashboard)/leave/...        → /leave
  *   app/(dashboard)/payroll/...      → /payroll
- *
- * Auth bridge:
- *   LoginForm sets cookie 'hadir-auth-token=1' on successful login
- *   Sidebar clears cookie 'hadir-auth-token=' on logout
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthenticated = !!request.cookies.get('hadir-auth-token')?.value
 
   const isLoginPage = pathname === '/login'
-
   const isProtectedPage =
     pathname === '/' ||
     pathname.startsWith('/attendance') ||
@@ -31,12 +28,10 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/leave') ||
     pathname.startsWith('/payroll')
 
-  // Unauthenticated + protected page → login
   if (isProtectedPage && !isAuthenticated) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated + login page → dashboard home
   if (isLoginPage && isAuthenticated) {
     return NextResponse.redirect(new URL('/', request.url))
   }
