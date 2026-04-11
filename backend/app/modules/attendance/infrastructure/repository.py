@@ -88,7 +88,7 @@ class AttendanceRepository:
             select(AttendanceLogModel).where(
                 and_(
                     AttendanceLogModel.employee_id == employee_id,
-                    AttendanceLogModel.type == check_type,
+                    AttendanceLogModel.type == check_type.value,
                     func.date(AttendanceLogModel.timestamp_utc) == today,
                 )
             ).order_by(AttendanceLogModel.timestamp_utc.desc()).limit(1)
@@ -100,13 +100,13 @@ class AttendanceRepository:
             employee_id=log.employee_id,
             company_id=log.company_id,
             timestamp_utc=log.timestamp_utc,
-            type=log.type,
+            type=log.type.value if hasattr(log.type, 'value') else log.type,
             latitude=log.latitude,
             longitude=log.longitude,
             accuracy_meters=log.accuracy_meters,
             photo_url=log.photo_url,
             device_id=log.device_id,
-            source=log.source,
+            source=log.source.value if hasattr(log.source, 'value') else log.source,
         )
         self.db.add(model)
         await self.db.flush()
